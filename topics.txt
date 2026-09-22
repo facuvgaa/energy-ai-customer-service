@@ -1,0 +1,11 @@
+docker exec -it kafka-local /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --topic chat.incoming.unclassified --partitions 1 --replication-factor 1
+
+docker exec -it kafka-local /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --topic chat.workflow.technical --partitions 1 --replication-factor 1
+
+docker exec -it kafka-local /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --topic chat.workflow.billing --partitions 1 --replication-factor 1
+
+docker exec -it kafka-local /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --topic chat.workflow.general --partitions 1 --replication-factor 1
+
+docker exec -it kafka-local /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --topic chat.session.routed --partitions 1 --replication-factor 1
+
+docker exec -it kafka-local /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --topic chat.workflow.unclassified --partitions 1 --replication-factor 1
