@@ -11,7 +11,7 @@ class InvoiceStatus(str, Enum):
 
 
 @dataclass(frozen=True)
-class Invoice:
+class InvoiceModel:
     invoice_id: str
     service_number: str
     period: str

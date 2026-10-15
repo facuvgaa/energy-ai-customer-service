@@ -28,7 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.server.McpServer;
 import io.modelcontextprotocol.server.McpSyncServer;
-import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
+import io.modelcontextprotocol.server.transport.HttpServletSseServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.ServerCapabilities;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
@@ -38,22 +38,32 @@ import jakarta.servlet.http.HttpServlet;
 public class McpServerConfig {
 
     @Bean
-    public HttpServletStreamableServerTransportProvider transportProvider(ObjectMapper springObjectMapper) {
-        return HttpServletStreamableServerTransportProvider.builder()
+    @SuppressWarnings("deprecation")
+    public HttpServletSseServerTransportProvider transportProvider(ObjectMapper springObjectMapper) {
+        return HttpServletSseServerTransportProvider.builder()
                 .jsonMapper(new JacksonMcpJsonMapper(springObjectMapper))
+                .baseUrl("")
+                .sseEndpoint("/sse")
+                .messageEndpoint("/message")
                 .build();
     }
 
     @Bean
-    public ServletRegistrationBean<HttpServlet> mcpServlet(HttpServletStreamableServerTransportProvider transportProvider) {
-        ServletRegistrationBean<HttpServlet> reg = new ServletRegistrationBean<>(transportProvider, "/mcp", "/mcp/*");
+    public ServletRegistrationBean<HttpServlet> mcpServlet(HttpServletSseServerTransportProvider transportProvider) {
+        ServletRegistrationBean<HttpServlet> reg = new ServletRegistrationBean<>(
+                transportProvider,
+                "/sse",
+                "/message",
+                "/mcp/sse",
+                "/mcp/message"
+        );
         reg.setAsyncSupported(true);
         return reg;
     }
 
     @Bean
     public McpSyncServer mcpSyncServer(
-            HttpServletStreamableServerTransportProvider transportProvider,
+            HttpServletSseServerTransportProvider transportProvider,
             ObjectMapper springObjectMapper,
             CreateClaimUseCase createClaimUseCase,
             GetClaimByNumberUseCase getClaimByNumberUseCase,

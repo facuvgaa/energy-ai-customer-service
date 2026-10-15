@@ -5,7 +5,6 @@ services:
     ports:
       - "9092:9092"
     environment:
-      # Modo KRaft (sin ZooKeeper)
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
@@ -17,6 +16,67 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-    
+  
+  postgrest-clients:
+    image: postgres:15
+    container_name: db-clients
+    restart: always
+    environment:
+      POSTGRES_DB: clientsdb
+      POSTGRES_USER: client_user
+      POSTGRES_PASSWORD: client_secret
+    ports:
+      - "5433:5432"
+    volumes:
+      - clients_data:/var/lib/postgresql/data
+
+  minio:
+    image: cgr.dev/chainguard/minio:latest
+    container_name: storage-images
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+
+  postgrest-claims:
+    image: postgres:15
+    container_name: db-claims
+    environment:
+      POSTGRES_DB: claimsdb
+      POSTGRES_USER: claims_user
+      POSTGRES_PASSWORD: claims_secret
+    ports:
+      - "5434:5432"
+    volumes:
+      - claims_data:/var/lib/postgresql/data
+  
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: vectorial-db
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+      - ANONYMIZED_TELEMETRY=FALSE
+    restart: unless-stopped
+
   redis:
-    image:
+    image: redis:7-alpine
+    container_name: redis-local
+    ports:
+      - "6379:6379"
+
+
+volumes:
+  clients_data:
+  minio_data:
+  claims_data:
+  chroma_data:

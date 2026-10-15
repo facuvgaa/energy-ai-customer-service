@@ -1,11 +1,11 @@
 from dataclasses import dataclass, field
 from typing import List
-from domain.models.invoice import Invoice, InvoiceStatus
+from billing.domain.models.invoice_model import Invoice, InvoiceStatus
 
 
 
 @dataclass
-class BillingAccount:
+class BillingAccountModel:
     service_number: str 
     hold_name: str 
     address: str 

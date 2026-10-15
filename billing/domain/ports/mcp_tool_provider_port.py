@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List, Any
 
 
-class MCPToolProviderPort(ABC):
+class McpToolProviderPort(ABC):
 
     @abstractmethod
     async def get_tools(self)-> List[Any]:
