@@ -6,7 +6,7 @@ from typing import Optional
 
 class InvoiceStatus(str, Enum):
     PAID = 'PAID'
-    UNPAID = 'PAID'
+    UNPAID = 'UNPAID'
     OVERDUE = 'OVERDUE'
 
 

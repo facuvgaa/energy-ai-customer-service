@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List
-from billing.domain.models.invoice_model import Invoice, InvoiceStatus
+from domain.models.invoice_model import InvoiceModel, InvoiceStatus
 
 
 
@@ -9,7 +9,7 @@ class BillingAccountModel:
     service_number: str 
     hold_name: str 
     address: str 
-    invoices: List[Invoice] = field(default_factory=list)
+    invoices: List[InvoiceModel] = field(default_factory=list)
 
     @property
     def total_debt(self)->float:
@@ -20,7 +20,7 @@ class BillingAccountModel:
         return any(inv.status == InvoiceStatus.OVERDUE for inv in self.invoices)
 
     @property
-    def latest_invoice(self) -> Invoice | None:
+    def latest_invoice(self) -> InvoiceModel | None:
         if not self.invoices:
             return None
         return sorted(self.invoices, key=lambda x: x.due_date, reverse=True)[0]
