@@ -1,2 +1,5 @@
 langchain-core
 langgraph
+minio
+redis
+google-genai
