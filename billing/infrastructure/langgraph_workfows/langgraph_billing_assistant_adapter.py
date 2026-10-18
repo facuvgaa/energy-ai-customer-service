@@ -26,7 +26,7 @@ class LanggraphBillingAssistantAdapter(BillingAssistandPort):
 
         logger.info("Running billing graph for session_id=%s", context.session_id)
 
-        final_state = await self._graph.invoke(initial_state)
+        final_state = await self._graph.ainvoke(initial_state)
 
         return final_state["response"], final_state["context"]
     
