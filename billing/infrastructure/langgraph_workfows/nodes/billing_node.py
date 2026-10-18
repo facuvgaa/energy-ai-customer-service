@@ -4,7 +4,7 @@ from domain.ports.llm_provider_port import LlmProviderPort
 from domain.ports.mcp_tool_provider_port import McpToolProviderPort
 from domain.promps.billing_system_prompt import BILLING_SYSTEM_PROMPT
 from domain.promps.user_prompt import USER_PROMPT
-from infrastructure.langgraph.state.billing_state import BillingState
+from infrastructure.langgraph_workfows.state.billing_state import BillingState
 
 logger = logging.getLogger(__name__)
 
