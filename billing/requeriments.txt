@@ -2,3 +2,4 @@ langgraph
 minio
 redis
 google-genai
+aiokafka
