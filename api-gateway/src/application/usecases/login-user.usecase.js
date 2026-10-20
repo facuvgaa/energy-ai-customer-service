@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 
 
 export class LoginUserCase{
-    constructor({userRepositorym, tokenProvider}){
+    constructor({userRepository, tokenProvider}){
         this.userRepository = userRepository;
         this.tokenProvider = tokenProvider;
     }
