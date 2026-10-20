@@ -1,4 +1,4 @@
-import base64
+import asyncio
 import json
 import logging
 import os
@@ -19,6 +19,7 @@ class KafkaBillingConsumer:
         bootstrap_servers: str = None,
         topic: str = "chat.workflow.billing",
         group_id: str = "billing-workflow-group",
+        max_concurrency: int = 50,
     ):
         self._use_case = use_case
         self._producer = producer
@@ -29,6 +30,45 @@ class KafkaBillingConsumer:
         self._group_id = group_id
         self._consumer: AIOKafkaConsumer | None = None
         self._running = False
+        self._semaphore = asyncio.Semaphore(max_concurrency)
+        self._active_tasks: set[asyncio.Task] = set()
+
+    async def _process_record(self, record) -> None:
+        async with self._semaphore:
+            try:
+                if record.value is None:
+                    return
+
+                raw_val = (
+                    record.value.decode("utf-8")
+                    if isinstance(record.value, (bytes, bytearray))
+                    else record.value
+                )
+                data = json.loads(raw_val) if isinstance(raw_val, str) else raw_val
+
+                command = ProcessBillingMessageCommand(
+                    session_id=str(data["session_id"]),
+                    user_id=str(data.get("user_id", "")),
+                    content=str(data.get("content", "")),
+                    is_authenticated=bool(data.get("is_authenticated", False)),
+                    extracted_document=data.get("extracted_document"),
+                )
+
+                response_text = await self._use_case.execute(command)
+
+                await self._producer.publish_response(
+                    session_id=command.session_id,
+                    user_id=command.user_id,
+                    response_text=response_text,
+                )
+
+            except Exception as err:
+                logger.error(
+                    "Error procesando mensaje en Billing (offset %s): %s",
+                    record.offset,
+                    err,
+                    exc_info=True,
+                )
 
     async def start(self) -> None:
         self._consumer = AIOKafkaConsumer(
@@ -46,48 +86,13 @@ class KafkaBillingConsumer:
             async for record in self._consumer:
                 if not self._running:
                     break
-                try:
-                    if record.value is None:
-                        continue
-
-                    raw_val = (
-                        record.value.decode("utf-8")
-                        if isinstance(record.value, (bytes, bytearray))
-                        else record.value
-                    )
-                    data = json.loads(raw_val) if isinstance(raw_val, str) else raw_val
-
-                    # Si viene una imagen en base64, la pasamos a bytes
-                    image_b64 = data.get("image_base64")
-                    image_bytes = base64.b64decode(image_b64) if image_b64 else None
-
-                    # 1. Armamos el Command
-                    command = ProcessBillingMessageCommand(
-                        session_id=str(data["session_id"]),
-                        user_id=str(data.get("user_id", "")),
-                        content=str(data.get("content", "")),
-                        image_bytes=image_bytes,
-                        filename=data.get("filename"),
-                    )
-
-                    # 2. Ejecutamos el Caso de Uso
-                    response_text = await self._use_case.execute(command)
-
-                    # 3. Enviamos la respuesta al tópico de salida
-                    await self._producer.publish_response(
-                        session_id=command.session_id,
-                        user_id=command.user_id,
-                        response_text=response_text,
-                    )
-
-                except Exception as err:
-                    logger.error(
-                        "Error procesando mensaje en Billing (offset %s): %s",
-                        record.offset,
-                        err,
-                        exc_info=True,
-                    )
+                task = asyncio.create_task(self._process_record(record))
+                self._active_tasks.add(task)
+                task.add_done_callback(self._active_tasks.discard)
         finally:
+            if self._active_tasks:
+                logger.info("Esperando que terminen %d tareas en curso...", len(self._active_tasks))
+                await asyncio.gather(*self._active_tasks, return_exceptions=True)
             await self._consumer.stop()
 
     def stop(self) -> None:

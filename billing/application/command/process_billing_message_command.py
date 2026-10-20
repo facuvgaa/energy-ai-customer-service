@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Dict, Optional
 
 
 @dataclass(frozen=True)
@@ -7,6 +7,5 @@ class ProcessBillingMessageCommand:
     session_id: str
     user_id: str
     content: str
-    image_bytes: Optional[bytes] = None
-    filename: Optional[str] = None
-
+    is_authenticated: bool = False
+    extracted_document: Optional[Dict[str, Any]] = None

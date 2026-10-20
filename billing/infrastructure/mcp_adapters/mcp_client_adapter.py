@@ -1,27 +1,38 @@
-from domain.ports.mcp_tool_provider_port import McpToolProviderPort
+import hashlib
+import json
 import logging
 import os
+from typing import Any, Dict, List, Optional
+import redis.asyncio as redis
 from mcp import ClientSession
 from mcp.client.sse import sse_client
-from dotenv import load_dotenv
-from typing import Any, Dict, List
+from domain.ports.mcp_tool_provider_port import McpToolProviderPort
 
 logger = logging.getLogger(__name__)
 
 
-
 class McpClientAdapter(McpToolProviderPort):
-    def __init__(self, sse_url: str = os.getenv("MCP_SERVER_URL", "http://localhost:8080/sse")):
+    def __init__(
+        self,
+        sse_url: str = os.getenv("MCP_SERVER_URL", "http://localhost:8080/sse"),
+        redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379"),
+        cache_ttl_seconds: int = 600,
+    ):
         self._sse_url = sse_url
+        self._redis = redis.from_url(redis_url, decode_responses=True)
+        self._cache_ttl = cache_ttl_seconds
+        self._tools_cache: Optional[List[Dict[str, Any]]] = None
 
-    async def list_tool(self)-> List[Dict[str, Any]]:
+    async def list_tool(self) -> List[Dict[str, Any]]:
+        if self._tools_cache is not None:
+            return self._tools_cache
 
-        try: 
+        try:
             async with sse_client(self._sse_url) as (read_stream, write_stream):
                 async with ClientSession(read_stream, write_stream) as session:
                     await session.initialize()
                     response = await session.list_tools()
-                    return [
+                    self._tools_cache = [
                         {
                             "name": tool.name,
                             "description": tool.description,
@@ -29,11 +40,26 @@ class McpClientAdapter(McpToolProviderPort):
                         }
                         for tool in response.tools
                     ]
+                    return self._tools_cache
         except Exception as e:
             logger.error("Error listando tools del servidor MCP (%s): %s", self._sse_url, e, exc_info=True)
             return []
 
-    async def call_tool(self, tool_name, arguments):
+    async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> str:
+        args_hash = hashlib.md5(
+            json.dumps(arguments, sort_keys=True).encode("utf-8")
+        ).hexdigest()
+        cache_key = f"billing:mcp_cache:{tool_name}:{args_hash}"
+
+        is_query = tool_name.lower().startswith(
+            ("get", "list", "find", "check", "consultar")
+        )
+        if is_query:
+            cached = await self._redis.get(cache_key)
+            if cached:
+                logger.info("Cache HIT en Redis para tool MCP '%s'", tool_name)
+                return cached
+
         try:
             async with sse_client(self._sse_url) as (read_stream, write_stream):
                 async with ClientSession(read_stream, write_stream) as session:
@@ -44,7 +70,12 @@ class McpClientAdapter(McpToolProviderPort):
                         for content in result.content
                         if hasattr(content, "text")
                     ]
-                    return "\n".join(texts)
+                    output = "\n".join(texts)
+
+                    if is_query and output:
+                        await self._redis.setex(cache_key, self._cache_ttl, output)
+
+                    return output
         except Exception as e:
             logger.error("Error ejecutando tool MCP '%s': %s", tool_name, e, exc_info=True)
             return f"Error al consultar la herramienta {tool_name}: {str(e)}"
