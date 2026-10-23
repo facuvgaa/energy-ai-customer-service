@@ -55,11 +55,13 @@ class KafkaUnclassifiedConsumer:
                         continue
 
                     raw_ts = data.get("timestamp")
-                    ts = datetime.fromisoformat(raw_ts) if raw_ts else datetime.now(timezone.utc)
+                    ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00")) if raw_ts else datetime.now(timezone.utc)
                     msg = IncomingMessage(
                         session_id=str(data["session_id"]),
                         user_id=str(data.get("user_id", "")),
                         content=str(data["content"]),
+                        service_numbers=[str(s) for s in data.get("service_numbers", [])],
+                        attachments=data.get("attachments", []),
                         timestamp=ts
                     )
                     await self._use_case.execute(msg)

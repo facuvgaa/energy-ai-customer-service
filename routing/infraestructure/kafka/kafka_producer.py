@@ -37,6 +37,8 @@ class KafkaPublisherAdapter(EventPusblisherPort):
             "session_id": message.session_id,
             "user_id": message.user_id,
             "content": message.content,
+            "service_numbers": message.service_numbers,
+            "attachments": message.attachments,
             "timestamp": message.timestamp.isoformat() if hasattr(message, "timestamp") and message.timestamp else None
         }
 

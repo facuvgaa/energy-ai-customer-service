@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 
@@ -8,4 +8,5 @@ class ProcessBillingMessageCommand:
     user_id: str
     content: str
     is_authenticated: bool = False
+    service_numbers: list[str] = field(default_factory=list)
     extracted_document: Optional[Dict[str, Any]] = None

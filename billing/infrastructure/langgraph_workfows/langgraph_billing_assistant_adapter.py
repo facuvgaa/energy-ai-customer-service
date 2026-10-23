@@ -18,9 +18,10 @@ class LanggraphBillingAssistantAdapter(BillingAssistandPort):
         initial_state: BillingState = {
             "user_message": user_message,
             "context": context,
-            "tool_to_call":None,
+            "tool_to_call": None,
             "tool_args": None,
-            "tool_result": None,
+            "tool_results": [],
+            "iteration_count": 0,
             "response": "",
         }
 

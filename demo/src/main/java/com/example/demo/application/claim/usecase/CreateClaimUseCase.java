@@ -3,6 +3,7 @@ package com.example.demo.application.claim.usecase;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.demo.application.claim.command.CreateClaimCommand;
 import com.example.demo.domain.models.claims.Claim;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service 
 @RequiredArgsConstructor 
+@Transactional
 public class CreateClaimUseCase {
 
     private final ClaimRepository claimRepository;

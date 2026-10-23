@@ -31,7 +31,10 @@ class ProcessBillingMessageUsecase:
                 session_id=command.session_id,
                 user_id=command.user_id,
                 is_autenticated=command.is_authenticated,
+                service_numbers=command.service_numbers,
             )
+        elif command.service_numbers and not context.service_numbers:
+            context.service_numbers = command.service_numbers
 
         user_message = command.content
 
@@ -41,16 +44,26 @@ class ProcessBillingMessageUsecase:
             if service_num and not context.service_number:
                 context.service_number = str(service_num)
 
+            # Si el documento es un comprobante de pago con monto, lo registramos en el contexto
+            if doc.get("document_type") in ("PAYMENT_RECEIPT", "INVOICE") or doc.get("amount"):
+                context.last_receipt = doc
+
             user_message += (
-                f"\n[Documento procesado por Vision ({doc.get('document_type')}): "
+                f"\n[Documento adjunto procesado por Vision ({doc.get('document_type')}): "
                 f"suministro={service_num}, monto={doc.get('amount')}, "
                 f"ref={doc.get('transaction_id')}, url={doc.get('image_url')}]"
             )
+
+        # Agregamos el mensaje del usuario al historial antes de llamar al asistente
+        context.messages.append({"role": "user", "content": user_message})
 
         response_text, updated_context = await self._assistant.process_message(
             user_message=user_message,
             context=context,
         )
+
+        # Guardamos la respuesta del asistente en el historial
+        updated_context.messages.append({"role": "assistant", "content": response_text})
 
         await self._repository.save(updated_context)
 

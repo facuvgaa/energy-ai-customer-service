@@ -50,7 +50,8 @@ class KafkaBillingConsumer:
                     session_id=str(data["session_id"]),
                     user_id=str(data.get("user_id", "")),
                     content=str(data.get("content", "")),
-                    is_authenticated=bool(data.get("is_authenticated", False)),
+                    is_authenticated=bool(data.get("is_authenticated", True if data.get("user_id") else False)),
+                    service_numbers=[str(s) for s in data.get("service_numbers", [])],
                     extracted_document=data.get("extracted_document"),
                 )
 

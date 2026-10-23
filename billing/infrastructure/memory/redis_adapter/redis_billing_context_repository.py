@@ -22,6 +22,9 @@ class RedisBillingContextRepository(BillingContextRepositoryPort):
             "user_id": context.user_id,
             "service_number": context.service_number,
             "is_autenticated": context.is_autenticated,
+            "service_numbers": context.service_numbers,
+            "messages": context.messages[-20:],  # guardamos últimos 20 mensajes
+            "last_receipt": context.last_receipt,
             "account": None,
         }
 
@@ -80,4 +83,7 @@ class RedisBillingContextRepository(BillingContextRepositoryPort):
             service_number=data.get("service_number"),
             account=account,
             is_autenticated=data.get("is_autenticated", False),
+            service_numbers=data.get("service_numbers", []),
+            messages=data.get("messages", []),
+            last_receipt=data.get("last_receipt"),
         )

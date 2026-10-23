@@ -11,7 +11,7 @@ class BillingGraphBuilder:
     def _should_call_tool(self, state: BillingState):
 
         if state.get("tool_to_call"):
-            return "tool"
+            return "tools"
         return END
 
     def build(self):

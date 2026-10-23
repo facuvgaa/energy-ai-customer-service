@@ -36,7 +36,7 @@ class McpClientAdapter(McpToolProviderPort):
                         {
                             "name": tool.name,
                             "description": tool.description,
-                            "input_schema": tool.inputSchema,
+                            "input_schema": getattr(tool, "input_schema", getattr(tool, "inputSchema", {})),
                         }
                         for tool in response.tools
                     ]
@@ -45,7 +45,27 @@ class McpClientAdapter(McpToolProviderPort):
             logger.error("Error listando tools del servidor MCP (%s): %s", self._sse_url, e, exc_info=True)
             return []
 
+    def _normalize_args(self, tool_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
+        normalized = dict(args or {})
+        # Mapeos comunes de snake_case a camelCase que espera Spring Boot
+        if "service_number" in normalized and "serviceNumber" not in normalized:
+            normalized["serviceNumber"] = normalized.pop("service_number")
+        if "client_id" in normalized and "clientId" not in normalized:
+            normalized["clientId"] = normalized.pop("client_id")
+        if "claim_number" in normalized and "claimNumber" not in normalized:
+            normalized["claimNumber"] = normalized.pop("claim_number")
+
+        # Conversión a entero para números de servicio / reclamos en Spring Boot
+        for key in ("serviceNumber", "claimNumber"):
+            if key in normalized:
+                try:
+                    normalized[key] = int(normalized[key])
+                except (ValueError, TypeError):
+                    pass
+        return normalized
+
     async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> str:
+        arguments = self._normalize_args(tool_name, arguments)
         args_hash = hashlib.md5(
             json.dumps(arguments, sort_keys=True).encode("utf-8")
         ).hexdigest()

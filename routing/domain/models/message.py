@@ -13,4 +13,6 @@ class IncomingMessage:
     session_id: str
     user_id: str
     content: str
+    service_numbers: list[str] = field(default_factory=list)
+    attachments: list[dict] = field(default_factory=list)
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

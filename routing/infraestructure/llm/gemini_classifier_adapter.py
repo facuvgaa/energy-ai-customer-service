@@ -12,27 +12,48 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-MODEL_GEMINI = os.getenv("MODEL_GEMINI", "gemini-2.5-flash")
+MODEL_GEMINI = os.getenv("MODEL_GEMINI", "gemini-3.5-flash-lite")
 
 
 class GoogleVertexClassifierAdapter(IntentClassifierPort):
 
     def __init__(self, model_id: str = MODEL_GEMINI):
         self._model = model_id
-        self._client = genai.Client()
+        self._fallback_models = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.8-flash"]
+        self._client = genai.Client(
+            http_options=types.HttpOptions(
+                timeout=8000,
+                retry_options=types.HttpRetryOptions(attempts=1),
+            )
+        )
 
     async def classify(self, text: str) -> WorkFlowTarget:
+        models_to_try = [self._model] + [m for m in self._fallback_models if m != self._model]
+        response = None
+        last_error = None
+
+        for model_name in models_to_try:
+            try:
+                response = await self._client.aio.models.generate_content(
+                    model=model_name,
+                    contents=text,
+                    config=types.GenerateContentConfig(
+                        system_instruction=SYSTEM_PROMPT,
+                        temperature=0.0,
+                        max_output_tokens=150,
+                        automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+                    ),
+                )
+                break
+            except Exception as e:
+                last_error = e
+                logger.warning("Modelo '%s' saturado o con error (%s), probando fallback...", model_name, e)
+
+        if response is None:
+            logger.error("Error en clasificación Gemini tras agotar fallbacks: %s", last_error, exc_info=True)
+            return WorkFlowTarget.UNKNOWN
+
         try:
-            response = await self._client.aio.models.generate_content(
-                model=self._model,
-                contents=text,
-                config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_PROMPT,
-                    temperature=0.0,
-                    max_output_tokens=150,
-                    automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
-                ),
-            )
 
             raw_text = (response.text or "").strip().upper()
             logger.debug("Respuesta del modelo: '%s'", raw_text)

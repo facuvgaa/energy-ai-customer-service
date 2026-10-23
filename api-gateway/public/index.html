@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Electric Service — Portal de Atención IA</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    .prose p { margin-bottom: 0.5rem; }
+    .prose p:last-child { margin-bottom: 0; }
+    .prose strong { color: #fef08a; font-weight: 600; }
+    .prose ul { list-style-type: disc; margin-left: 1.25rem; margin-bottom: 0.5rem; }
+    .prose ol { list-style-type: decimal; margin-left: 1.25rem; margin-bottom: 0.5rem; }
+    .prose li { margin-bottom: 0.25rem; }
+    .prose a { color: #38bdf8; text-decoration: underline; font-weight: 500; }
+    .prose a:hover { color: #7dd3fc; }
+    .prose code { background: rgba(0,0,0,0.35); padding: 0.15rem 0.35rem; border-radius: 0.25rem; font-size: 0.85em; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-4">
+
+  <!-- PANTALLA DE LOGIN / REGISTRO -->
+  <div id="auth-screen" class="w-full max-w-md bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-8">
+    <div class="flex items-center gap-3 mb-6">
+      <div class="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center text-slate-900 font-bold text-xl">⚡</div>
+      <div>
+        <h1 class="text-xl font-bold">Electric Service</h1>
+        <p class="text-xs text-slate-400">Portal de Clientes &amp; Asistente IA</p>
+      </div>
+    </div>
+
+    <div class="flex mb-6 bg-slate-900 rounded-lg p-1">
+      <button id="tab-login" onclick="switchTab('login')" class="flex-1 py-2 text-sm font-medium rounded-md bg-amber-500 text-slate-900">Iniciar Sesión</button>
+      <button id="tab-register" onclick="switchTab('register')" class="flex-1 py-2 text-sm font-medium rounded-md text-slate-400">Registrarse</button>
+    </div>
+
+    <form id="auth-form" onsubmit="handleAuth(event)" class="space-y-4">
+      <div id="register-fields" class="hidden space-y-4">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Nombre Completo</label>
+          <input id="fullName" type="text" placeholder="Juan Pérez" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Números de Suministro (separados por coma)</label>
+          <input id="serviceNumbers" type="text" placeholder="Ej: 100234, 500891 (Casa, Local)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500" />
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Email</label>
+        <input id="email" type="email" required placeholder="cliente@correo.com" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500" />
+      </div>
+
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Contraseña</label>
+        <input id="password" type="password" required placeholder="••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500" />
+      </div>
+
+      <p id="auth-error" class="text-xs text-red-400 hidden"></p>
+
+      <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold py-2.5 rounded-lg text-sm transition">
+        Continuar
+      </button>
+    </form>
+  </div>
+
+  <!-- PANTALLA DE CHAT -->
+  <div id="chat-screen" class="hidden w-full max-w-3xl h-[85vh] bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+    <!-- Header -->
+    <div class="px-6 py-4 bg-slate-900/70 border-b border-slate-700 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-amber-500 flex items-center justify-center text-slate-900 font-bold">⚡</div>
+        <div>
+          <h2 id="user-title" class="font-semibold text-sm">Cliente</h2>
+          <p id="user-services" class="text-xs text-slate-400">Suministros: -</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span id="route-badge" class="text-xs px-2.5 py-1 rounded-full bg-slate-700 text-slate-300">Ruta: sin clasificar</span>
+        <button onclick="logout()" class="text-xs text-slate-400 hover:text-red-400">Salir</button>
+      </div>
+    </div>
+
+    <!-- Mensajes -->
+    <div id="messages" class="flex-1 overflow-y-auto p-6 space-y-4">
+      <div class="bg-slate-700/60 rounded-xl p-3.5 max-w-lg text-sm text-slate-200">
+        ¡Hola! Soy el asistente de Electric Service. Podés consultarme por tus facturas, saldos, reclamos técnicos o adjuntar una foto de tu boleta o comprobante de pago.
+      </div>
+    </div>
+
+    <!-- Input -->
+    <form onsubmit="sendMessage(event)" class="p-4 bg-slate-900/70 border-t border-slate-700 flex flex-col gap-2">
+      <div id="file-preview-pill" class="hidden self-start flex items-center gap-1.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2.5 py-1 rounded-lg text-xs">
+        <span>📎</span>
+        <span id="file-preview-name" class="max-w-[200px] truncate">imagen.jpg</span>
+        <button type="button" onclick="clearFile()" class="text-amber-400 hover:text-red-400 font-bold ml-1">✕</button>
+      </div>
+      <div class="flex items-center gap-3">
+        <label class="cursor-pointer bg-slate-800 hover:bg-slate-700 border border-slate-600 px-3 py-2.5 rounded-lg text-xs text-slate-300 flex items-center gap-1.5 transition">
+          📎 <span id="file-label">Foto</span>
+          <input id="file-input" type="file" accept="image/*" class="hidden" onchange="updateFileLabel()" />
+        </label>
+        <input id="msg-input" type="text" placeholder="Escribí tu consulta o pegá una imagen con Ctrl+V..." class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-amber-500" />
+        <button type="submit" class="bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold px-5 py-2.5 rounded-lg text-sm transition">
+          Enviar
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    let mode = "login";
+    let token = null;
+    let currentUser = null;
+    let socket = null;
+    const sessionId = "sess_" + Math.random().toString(36).substring(2, 10);
+
+    function switchTab(newMode) {
+      mode = newMode;
+      const isReg = mode === "register";
+      document.getElementById("register-fields").classList.toggle("hidden", !isReg);
+      document.getElementById("tab-login").className = !isReg
+        ? "flex-1 py-2 text-sm font-medium rounded-md bg-amber-500 text-slate-900"
+        : "flex-1 py-2 text-sm font-medium rounded-md text-slate-400";
+      document.getElementById("tab-register").className = isReg
+        ? "flex-1 py-2 text-sm font-medium rounded-md bg-amber-500 text-slate-900"
+        : "flex-1 py-2 text-sm font-medium rounded-md text-slate-400";
+    }
+
+    async function handleAuth(e) {
+      e.preventDefault();
+      const errorEl = document.getElementById("auth-error");
+      errorEl.classList.add("hidden");
+
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const fullName = document.getElementById("fullName").value.trim();
+      const rawServices = document.getElementById("serviceNumbers").value;
+      const serviceNumbers = rawServices
+        ? rawServices.split(",").map(s => s.trim()).filter(Boolean)
+        : [];
+
+      const endpoint = mode === "register" ? "/auth/register" : "/auth/login";
+      const body = mode === "register"
+        ? { email, password, fullName, serviceNumbers }
+        : { email, password };
+
+      try {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Error de autenticación");
+
+        token = data.token;
+        currentUser = data.user;
+        openChat();
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.classList.remove("hidden");
+      }
+    }
+
+    function openChat() {
+      document.getElementById("auth-screen").classList.add("hidden");
+      document.getElementById("chat-screen").classList.remove("hidden");
+      document.getElementById("user-title").textContent = `${currentUser.fullName} (${currentUser.email})`;
+      document.getElementById("user-services").textContent =
+        "Suministros: " + (currentUser.serviceNumbers?.length ? currentUser.serviceNumbers.join(", ") : "Ninguno asociado");
+
+      socket = io({
+        auth: { token, sessionId },
+      });
+
+      socket.on("route_updated", (data) => {
+        document.getElementById("route-badge").textContent = `Ruta: ${data.targetTopic}`;
+      });
+
+      socket.on("bot_response", (data) => {
+        appendMessage(data.content, "bot", data.source, true);
+      });
+    }
+
+    function clearFile() {
+      const fileInput = document.getElementById("file-input");
+      fileInput.value = "";
+      updateFileLabel();
+    }
+
+    function updateFileLabel() {
+      const file = document.getElementById("file-input").files[0];
+      const pill = document.getElementById("file-preview-pill");
+      const label = document.getElementById("file-label");
+      if (file) {
+        label.textContent = "Foto ✔";
+        document.getElementById("file-preview-name").textContent = file.name || "captura.png";
+        pill.classList.remove("hidden");
+      } else {
+        label.textContent = "Foto";
+        pill.classList.add("hidden");
+      }
+    }
+
+    // SOPORTE PARA PEGAR IMÁGENES DIRECTAMENTE CON CTRL+V
+    window.addEventListener("paste", (e) => {
+      const items = (e.clipboardData || window.clipboardData)?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) {
+            const dt = new DataTransfer();
+            const namedFile = new File([file], file.name === "image.png" ? `captura_${Date.now()}.png` : file.name, { type: file.type });
+            dt.items.add(namedFile);
+            document.getElementById("file-input").files = dt.files;
+            updateFileLabel();
+            break;
+          }
+        }
+      }
+    });
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function sendMessage(e) {
+      e.preventDefault();
+      const input = document.getElementById("msg-input");
+      const fileInput = document.getElementById("file-input");
+      const text = input.value.trim();
+      const file = fileInput.files[0];
+
+      if (!text && !file) return;
+
+      input.value = "";
+
+      let fileBase64 = null;
+      let filename = null;
+      let mimeType = null;
+
+      if (file) {
+        fileBase64 = await fileToBase64(file);
+        filename = file.name;
+        mimeType = file.type || "image/jpeg";
+        fileInput.value = "";
+        updateFileLabel();
+      }
+
+      appendMessage(text, "user", "", false, fileBase64, mimeType);
+
+      socket.emit("user_message", { content: text, fileBase64, filename, mimeType }, (ack) => {
+        if (ack?.routedTo) {
+          document.getElementById("route-badge").textContent = `Ruta: ${ack.routedTo}`;
+        }
+        if (!ack?.ok && ack?.error) {
+          appendMessage(`Error: ${ack.error}`, "error");
+        }
+      });
+    }
+
+    function appendMessage(text, sender, source = "", stream = false, fileBase64 = null, mimeType = null) {
+      const container = document.getElementById("messages");
+      const div = document.createElement("div");
+
+      if (sender === "user") {
+        div.className = "ml-auto bg-amber-500 text-slate-900 font-medium rounded-xl p-3.5 max-w-lg text-sm shadow-md whitespace-pre-wrap flex flex-col gap-2";
+        if (fileBase64) {
+          const img = document.createElement("img");
+          img.src = `data:${mimeType || "image/jpeg"};base64,${fileBase64}`;
+          img.className = "rounded-lg max-w-[240px] max-h-[160px] object-cover border border-amber-600/40 shadow cursor-pointer hover:opacity-95 transition";
+          img.onclick = () => window.open(img.src);
+          div.appendChild(img);
+        }
+        if (text) {
+          const span = document.createElement("span");
+          span.textContent = text;
+          div.appendChild(span);
+        }
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+        return;
+      }
+
+      if (sender === "error") {
+        div.className = "bg-red-900/50 border border-red-700 text-red-200 rounded-xl p-3.5 max-w-lg text-sm";
+        div.textContent = text;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+        return;
+      }
+
+      // Mensaje del bot con Markdown y soporte de Streaming
+      div.className = "bg-slate-700/80 rounded-xl p-4 max-w-xl text-sm text-slate-100 shadow-md prose leading-relaxed";
+      const sourceHeader = source ? `<div class="text-[11px] font-semibold text-amber-400 mb-2 uppercase tracking-wider flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400"></span>${source}</div>` : "";
+      container.appendChild(div);
+
+      if (!stream) {
+        div.innerHTML = sourceHeader + marked.parse(text || "");
+        container.scrollTop = container.scrollHeight;
+        return;
+      }
+
+      // Efecto Typewriter Streaming
+      const words = (text || "").split(" ");
+      let currentIdx = 0;
+      let accumulated = "";
+
+      const interval = setInterval(() => {
+        if (currentIdx < words.length) {
+          accumulated += (currentIdx === 0 ? "" : " ") + words[currentIdx];
+          div.innerHTML = sourceHeader + marked.parse(accumulated) + `<span class="inline-block w-1.5 h-4 ml-1 bg-amber-400 animate-pulse align-middle"></span>`;
+          container.scrollTop = container.scrollHeight;
+          currentIdx++;
+        } else {
+          clearInterval(interval);
+          div.innerHTML = sourceHeader + marked.parse(accumulated);
+          container.scrollTop = container.scrollHeight;
+        }
+      }, 25);
+    }
+
+    function logout() {
+      if (socket) socket.disconnect();
+      location.reload();
+    }
+  </script>
+</body>
+</html>
+
