@@ -1,7 +1,7 @@
 from enum import Enum
 from dataclasses import dataclass, field
 from typing import Optional
-import datetime
+from datetime import datetime, timezone
 
 class ClaimPriority(str, Enum):
     URGENT = "URGENT" 
@@ -33,7 +33,7 @@ class ClaimModel:
     billing_number: Optional[str] = None
     photos_url: Optional[str] = None
     
-    created_at: datetime = field(default_factory=lambda: datetime.now(datetime.timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 
