@@ -4,7 +4,7 @@ from domain.models.billing_context_model import BillingContextModel
 from domain.ports.billing_assistand_port import BillingAssistandPort
 from domain.ports.billing_context_repository_port import BillingContextRepositoryPort
 
-logger = logging.getLogger("use_case")
+logger = logging.getLogger("use_case_billing")
 logger.setLevel(logging.DEBUG)
 
 
