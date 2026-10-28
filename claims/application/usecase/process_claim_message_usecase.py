@@ -37,7 +37,7 @@ class ProcessClaimMessageUsecase:
 
         user_message = command.content
 
-        # Tratamiento de foto y análisis de Vision
+
         if command.extracted_document:
             doc = command.extracted_document
             if doc.get("image_url"):
@@ -55,25 +55,20 @@ class ProcessClaimMessageUsecase:
                 f"URL={doc.get('image_url')}]"
             )
 
-        # 1. Agregamos el mensaje del usuario al historial en memoria
+
         context.messages.append({"role": "user", "content": user_message})
 
-        # 2. El asistente procesa el mensaje con el contexto completo
         result = await self._assistant.process_message(
             user_message=user_message,
             context=context,
         )
 
-        # 3. Si el asistente generó un reclamo técnico, lo guardamos en PostgreSQL
         if result.create_claim:
             await self._repository.save(result.create_claim)
             logger.info("Reclamo técnico guardado en BD con ID: %s", result.create_claim.claim_id)
 
-        # 4. Agregamos la respuesta del asistente al historial
         context.messages.append({"role": "assistant", "content": result.response_text})
 
-        # 5. Guardamos la memoria actualizada de la sesión en Redis
         await self._context_repository.save(context)
 
-        # 6. Devolvemos el texto que saldrá en la pantalla del usuario
         return result.response_text
