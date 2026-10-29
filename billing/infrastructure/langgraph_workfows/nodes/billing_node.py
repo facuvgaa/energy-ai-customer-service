@@ -20,7 +20,7 @@ class BillingNode:
         iteration = state.get("iteration_count", 0) + 1
         tool_results = list(state.get("tool_results") or [])
 
-        # Salvaguarda: máximo 4 iteraciones de herramientas por mensaje para evitar bucles infinitos
+
         if iteration > 4:
             logger.warning("Límite de iteraciones alcanzado en billing_node (%d). Forzando respuesta final.", iteration)
             return {
@@ -75,13 +75,13 @@ class BillingNode:
         if tool_to_call and tool_to_call not in available_tool_names:
             tool_to_call = None
 
-        # GUARDRAIL EN CÓDIGO: No permitir create_claim de RECONEXIÓN si no hay comprobante adjunto
+
         if tool_to_call == "create_claim" and str(tool_args.get("type")).upper() == "RECONNECTION":
             if not getattr(context, "last_receipt", None):
                 logger.warning("Guardrail activado: Intento de generar reconexión sin comprobante adjunto en sesión %s", context.session_id)
                 tool_to_call = None
 
-        # Salvaguarda anti-loop: si esta misma tool con estos mismos argumentos ya fue ejecutada, NO repetir
+
         if tool_to_call:
             for prev_tr in tool_results:
                 if prev_tr.get("tool") == tool_to_call and prev_tr.get("args") == tool_args:
@@ -90,10 +90,10 @@ class BillingNode:
                     break
 
         response_msg = decision.get("response") or ""
-        # Filtrar posibles leaks de texto tipo "We will call tool."
+
         if response_msg and (response_msg.lower().strip().startswith("we will call") or "{" in response_msg):
             response_msg = ""
-        # Si no hay respuesta para el usuario y no hay más herramientas que ejecutar
+
         if not response_msg and not tool_to_call:
             followup_prompt = (
                 f"Resultados de herramientas ejecutadas en este turno:\n"
@@ -143,7 +143,7 @@ class BillingNode:
 
         result = await self._mcp.call_tool(tool_name, tool_args)
         
-        # Acumulamos el resultado en el historial de herramientas de este turno
+
         current_results = list(state.get("tool_results") or [])
         current_results.append({
             "tool": tool_name,
