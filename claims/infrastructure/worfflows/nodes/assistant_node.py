@@ -1,4 +1,3 @@
-import json
 import logging
 from typing import Dict, Any
 from domain.promps.technical_claim_system_prompt import TECHNICAL_CLAIM_SYSTEM_PROMPT

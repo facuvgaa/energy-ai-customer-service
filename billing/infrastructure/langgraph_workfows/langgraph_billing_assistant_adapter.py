@@ -9,9 +9,9 @@ logger = logging.getLogger(__name__)
 
 
 class LanggraphBillingAssistantAdapter(BillingAssistandPort):
-    def __init__(self, graph_builder: BillingGraphBuilder):
+    def __init__(self, graph: BillingGraphBuilder):
 
-        self._graph = graph_builder.build()
+        self._graph = graph.build()
 
     async def process_message(self, user_message: str, context: BillingContextModel)-> tuple[str, BillingContextModel]:
             
