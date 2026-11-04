@@ -4,7 +4,7 @@ redis
 aiokafka
 python-dotenv
 openai
+google-genai
 langfuse<3
 pytest
 pytest-asyncio
-

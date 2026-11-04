@@ -1,6 +1,0 @@
-langgraph
-mcp
-redis
-google-genai
-aiokafka
-python-dotenv

@@ -7,16 +7,16 @@ services:
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://:29092,PLAINTEXT_HOST://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-  
+
   postgrest-clients:
     image: postgres:15
     container_name: db-clients
@@ -54,7 +54,7 @@ services:
       - "5434:5432"
     volumes:
       - claims_data:/var/lib/postgresql/data
-  
+
   chromadb:
     image: chromadb/chroma:latest
     container_name: vectorial-db
@@ -73,7 +73,7 @@ services:
     container_name: redis-local
     ports:
       - "6379:6379"
-  
+
   langfuse-db:
     image: postgres:16
     container_name: langfuse-db
@@ -107,6 +107,118 @@ services:
       - DATABASE_URL=postgresql://postgres:mysecretpassword@langfuse-db:5432/langfuse
       - TELEMETRY_ENABLED=true
 
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - REDIS_URL=redis://redis:6379
+      - PG_HOST=postgrest-clients
+      - PG_PORT=5432
+      - PG_DATABASE=clientsdb
+      - PG_USER=client_user
+      - PG_PASSWORD=client_secret
+      - VISION_SERVICE_URL=http://vision:8001
+      - JWT_SECRET=electric-service-super-secret-key
+    depends_on:
+      - kafka
+      - redis
+      - postgrest-clients
+
+  routing:
+    build:
+      context: ./routing
+      dockerfile: Dockerfile
+    container_name: routing-service
+    restart: unless-stopped
+    env_file:
+      - ./routing/.env
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    depends_on:
+      - kafka
+
+  vision:
+    build:
+      context: ./vision
+      dockerfile: Dockerfile
+    container_name: vision-service
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    env_file:
+      - ./vision/.env
+    environment:
+      - VISION_PORT=8001
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+      - MINIO_SECURE=false
+    depends_on:
+      - minio
+
+  billing:
+    build:
+      context: ./billing
+      dockerfile: Dockerfile
+    container_name: billing-service
+    restart: unless-stopped
+    env_file:
+      - ./billing/.env
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - REDIS_URL=redis://redis:6379
+      - LANGFUSE_HOST=http://langfuse-server:3000
+      - MCP_SERVER_URL=http://host.docker.internal:8080/sse
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - kafka
+      - redis
+
+  claims:
+    build:
+      context: ./claims
+      dockerfile: Dockerfile
+    container_name: claims-service
+    restart: unless-stopped
+    env_file:
+      - ./claims/.env
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - REDIS_URL=redis://redis:6379
+      - LANGFUSE_HOST=http://langfuse-server:3000
+      - MCP_SERVER_URL=http://host.docker.internal:8080/sse
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - kafka
+      - redis
+
+  consulting:
+    build:
+      context: ./consulting
+      dockerfile: Dockerfile
+    container_name: consulting-service
+    restart: unless-stopped
+    env_file:
+      - ./consulting/.env
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - REDIS_URL=redis://redis:6379
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - LANGFUSE_HOST=http://langfuse-server:3000
+    depends_on:
+      - kafka
+      - redis
+      - chromadb
 
 volumes:
   clients_data:

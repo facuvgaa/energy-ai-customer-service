@@ -32,7 +32,7 @@ async def main():
 
     billing_nodes = BillingNode(llm=llm_provider, mcp=mcp_client)
     graph_builder = BillingGraphBuilder(nodes=billing_nodes)
-    assistant = LanggraphBillingAssistantAdapter(graph_builder=graph_builder)
+    assistant = LanggraphBillingAssistantAdapter(graph=graph_builder)
 
     use_case = ProcessBillingMessageUsecase(
         repository=repository,

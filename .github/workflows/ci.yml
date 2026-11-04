@@ -37,11 +37,9 @@ jobs:
           pip install -r ${{ matrix.service }}/requirements.txt
 
       - name: Run Pytest
-        env:
-          PYTHONPATH: ${{ matrix.service }}
         run: |
           cd ${{ matrix.service }}
-          pytest -v tests/
+          python -m pytest -v tests/
 
   build-and-push-images:
     name: Build & Push - ${{ matrix.service }}
