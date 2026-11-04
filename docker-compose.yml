@@ -163,6 +163,15 @@ services:
     depends_on:
       - minio
 
+  mcp-service:
+    build:
+      context: ./demo
+      dockerfile: Dockerfile
+    container_name: mcp-service
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+
   billing:
     build:
       context: ./billing
@@ -175,12 +184,13 @@ services:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - REDIS_URL=redis://redis:6379
       - LANGFUSE_HOST=http://langfuse-server:3000
-      - MCP_SERVER_URL=http://host.docker.internal:8080/sse
+      - MCP_SERVER_URL=http://mcp-service:8080/sse
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       - kafka
       - redis
+      - mcp-service
 
   claims:
     build:
@@ -194,12 +204,13 @@ services:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - REDIS_URL=redis://redis:6379
       - LANGFUSE_HOST=http://langfuse-server:3000
-      - MCP_SERVER_URL=http://host.docker.internal:8080/sse
+      - MCP_SERVER_URL=http://mcp-service:8080/sse
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       - kafka
       - redis
+      - mcp-service
 
   consulting:
     build:
