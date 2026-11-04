@@ -43,6 +43,7 @@ class BedrockLlmAdapter(LlmProviderPort):
                     "parameters": t.get("input_schema", {"type": "object", "properties": {}}),
                 }
             })
+        return openai_tools
     async def generate_decision(self, system_prompt, user_prompt, tools = None, session_id = None, user_id = None, name = "claims-assistant")-> LlmDecision:
         
         try:
@@ -70,6 +71,21 @@ class BedrockLlmAdapter(LlmProviderPort):
             response = await self._client.chat.completions.create(**call_kwargs)
             message = response.choices[0].message
             content_text = message.content or getattr(message, "reasoning", "") or ""
+
+            if content_text:
+                clean_lines = []
+                for line in content_text.split("\n"):
+                    l_str = line.strip()
+                    if (l_str.lower().startswith("we will ") or l_str.lower().startswith("i will ")) and ("." in l_str):
+                        parts = l_str.split(".", 1)
+                        if len(parts) > 1 and parts[1].strip():
+                            clean_lines.append(parts[1].strip())
+                    elif l_str.lower().startswith("we will ") or l_str.lower().startswith("i will "):
+                        continue
+                    else:
+                        clean_lines.append(line)
+                content_text = "\n".join(clean_lines).strip()
+
             tool_calls: List[LlmToolCall] = []
 
             if getattr(message, "tool_calls", None):

@@ -53,7 +53,8 @@ def USER_PROMPT(state: dict, context, tools: list) -> str:
          * Explicále que para emitir el aviso de reconexión prioritario es indispensable que primero realice el pago y adjunte el comprobante (con el botón 📎 o pegándolo con Ctrl+V).
          * Apenas recibamos el comprobante por el monto adeudado, se generará el reclamo de reconexión.
     2. SUMINISTROS Y DIRECCIONES:
-       - Si el cliente pregunta qué suministros tiene o pide ver sus direcciones, consultá `get_electric_service_by_number` y mostrale cada número con su dirección real.
+       - Los suministros asociados al cliente son los que figuran arriba en "Suministros registrados en su perfil".
+       - Si el cliente pregunta qué suministros tiene, cuáles están a su nombre o pide ver sus direcciones: NUNCA digas que no tiene suministros registrados. Consultá `get_electric_service_by_number` para los suministros de su perfil y mostrale cada número con su dirección real y estado.
     3. HERRAMIENTAS:
        - Si necesitás datos de un suministro y la tool para ese número NO figura en "Resultados de herramientas ejecutadas", llamala con "tool_to_call" y "tool_args".
        - Si ya figura en "Resultados de herramientas ejecutadas", NO la repitas; respondé al cliente en "response".

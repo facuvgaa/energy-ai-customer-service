@@ -38,20 +38,60 @@ class GeminiDocumentExtractorAdapter(DocumentExtractorPort):
                         response_mime_type="application/json",
                     ),
                 )
-                data = json.loads(response.text)
-                doc_date = (
-                    date.fromisoformat(data["document_date"])
-                    if data.get("document_date")
-                    else None
-                )
+                raw_text = response.text or "{}"
+                clean_json = raw_text.strip()
+                if "```" in clean_json:
+                    for part in clean_json.split("```"):
+                        p_strip = part.strip()
+                        if p_strip.startswith("json"):
+                            p_strip = p_strip[4:].strip()
+                        if (p_strip.startswith("{") and p_strip.endswith("}")) or (p_strip.startswith("[") and p_strip.endswith("]")):
+                            clean_json = p_strip
+                            break
+
+                raw_data = json.loads(clean_json)
+                if isinstance(raw_data, list):
+                    data = raw_data[0] if raw_data and isinstance(raw_data[0], dict) else {}
+                elif isinstance(raw_data, dict):
+                    data = raw_data
+                else:
+                    data = {}
+
+
+                raw_type = str(data.get("document_type", "UNKNOWN")).upper().strip()
+                try:
+                    doc_type = DocumentType(raw_type)
+                except ValueError:
+                    doc_type = DocumentType.UNKNOWN
+
+
+                doc_date = None
+                if data.get("document_date"):
+                    try:
+                        doc_date = date.fromisoformat(str(data["document_date"]).strip())
+                    except Exception:
+                        doc_date = None
+
+
+                parsed_amount = None
+                raw_amount = data.get("amount")
+                if raw_amount is not None:
+                    try:
+                        if isinstance(raw_amount, (int, float)):
+                            parsed_amount = float(raw_amount)
+                        else:
+                            clean_amt = str(raw_amount).replace("$", "").replace(" ", "").replace(".", "").replace(",", ".")
+                            parsed_amount = float(clean_amt)
+                    except Exception:
+                        parsed_amount = None
 
                 return ExtractedDocumentModel(
-                    document_type=DocumentType(data.get("document_type", "UNKNOWN")),
-                    service_number=data.get("service_number"),
-                    amount=float(data["amount"]) if data.get("amount") is not None else None,
+                    document_type=doc_type,
+                    service_number=str(data["service_number"]) if data.get("service_number") else None,
+                    amount=parsed_amount,
                     document_date=doc_date,
-                    transaction_id=data.get("transaction_id"),
-                    invoice_id=data.get("invoice_id"),
+                    transaction_id=str(data["transaction_id"]) if data.get("transaction_id") else None,
+                    invoice_id=str(data["invoice_id"]) if data.get("invoice_id") else None,
                     description=data.get("description"),
                 )
             except Exception as e:

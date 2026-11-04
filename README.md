@@ -272,3 +272,4 @@ cd consulting && python -m pytest -v tests/
 The GitHub Actions workflow (`.github/workflows/ci.yml`) runs on pushes to `main`:
 1. **Parallel matrix testing** on Python 3.12 for all services.
 2. **Build and push** of Docker images to GitHub Container Registry (`ghcr.io`).
+
