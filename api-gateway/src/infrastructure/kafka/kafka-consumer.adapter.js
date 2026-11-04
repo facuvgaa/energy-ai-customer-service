@@ -34,7 +34,8 @@ export class KafkaConsumerAdapter {
                     await this.routeCache.setRoute(data.session_id, data.target_topic);
                     this.socketGateway.emitRouteUpdate(data.session_id, data.target_topic);
                 } else if (topic === "chat.outgoing.response") {
-                    // Un microservicio (ej: Billing) respondió al cliente
+                    // Un microservicio respondió al cliente
+                    console.log(`[KafkaConsumer] Respuesta del bot recibida para session=${data.session_id}`);
                     this.socketGateway.emitBotResponse(data.session_id, data);
                 }
             },

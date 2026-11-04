@@ -69,7 +69,7 @@ class BedrockLlmAdapter(LlmProviderPort):
 
             response = await self._client.chat.completions.create(**call_kwargs)
             message = response.choices[0].message
-            content_text = message.content or ""
+            content_text = message.content or getattr(message, "reasoning", "") or ""
             tool_calls: List[LlmToolCall] = []
 
             if getattr(message, "tool_calls", None):

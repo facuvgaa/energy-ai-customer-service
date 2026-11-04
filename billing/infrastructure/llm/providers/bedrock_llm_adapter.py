@@ -46,7 +46,8 @@ class BedrockLlmAdapter(LlmProviderPort):
                 max_tokens=2000,
                 **extra_kwargs
             )
-            return response.choices[0].message.content or "{}"
+            choice = response.choices[0]
+            return choice.message.content or getattr(choice.message, "reasoning", "") or "{}"
         except Exception as e:
             logger.error("Error generating response with Bedrock Mantle: %s", e, exc_info=True)
             raise

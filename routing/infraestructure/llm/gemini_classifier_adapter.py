@@ -20,12 +20,7 @@ class GoogleVertexClassifierAdapter(IntentClassifierPort):
     def __init__(self, model_id: str = MODEL_GEMINI):
         self._model = model_id
         self._fallback_models = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.8-flash"]
-        self._client = genai.Client(
-            http_options=types.HttpOptions(
-                timeout=8000,
-                retry_options=types.HttpRetryOptions(attempts=1),
-            )
-        )
+        self._client = genai.Client()
 
     async def classify(self, text: str) -> WorkFlowTarget:
         models_to_try = [self._model] + [m for m in self._fallback_models if m != self._model]

@@ -60,5 +60,11 @@ class BedrockClassifierAdapter(IntentClassifierPort):
             logger.warning("Intención no reconocida: '%s' -> asignando UNKNOWN", raw)
             return WorkFlowTarget.UNKNOWN
         except Exception as e:
-            logger.error("Error clasificando con Bedrock Mantle: %s", e, exc_info=True)
-            return WorkFlowTarget.UNKNOWN
+            logger.error("Error clasificando con Bedrock Mantle: %s. Intentando fallback con Gemini...", e)
+            try:
+                from infraestructure.llm.gemini_classifier_adapter import GoogleVertexClassifierAdapter
+                gemini_adapter = GoogleVertexClassifierAdapter()
+                return await gemini_adapter.classify(text)
+            except Exception as fallback_err:
+                logger.error("Error en fallback Gemini: %s", fallback_err)
+                return WorkFlowTarget.UNKNOWN

@@ -49,14 +49,33 @@ class BedrockConsultingLlmAdapter(ConsultingLlmPort):
                 temperature=0.1,
                 max_tokens=1500,
             )
-            answer = response.choices[0].message.content or ""
+            choice = response.choices[0]
+            answer = choice.message.content or getattr(choice.message, "reasoning", "") or ""
             sources = list({c.source for c in context_chunks})
             return ConsultingResultModel(response_text=answer, sources=sources)
 
         except Exception as e:
-            logger.error("Error llamando a Bedrock Mantle: %s", e, exc_info=True)
-            return ConsultingResultModel(
-                response_text="Disculpá, tuvimos un inconveniente técnico momentáneo al consultar la información. Por favor intentá nuevamente en unos instantes o comunicate con el 0800-777-EDET (3338).",
-                sources=[],
-            )
+            logger.error("Error llamando a Bedrock Mantle: %s. Intentando fallback con Gemini...", e)
+            try:
+                from google import genai
+                from google.genai import types
+                client = genai.Client()
+                gemini_resp = await client.aio.models.generate_content(
+                    model="gemini-3.5-flash-lite",
+                    contents=user_prompt,
+                    config=types.GenerateContentConfig(
+                        system_instruction=CONSULTING_SYSTEM_PROMPT,
+                        temperature=0.1,
+                        max_output_tokens=1500,
+                    ),
+                )
+                answer = gemini_resp.text or ""
+                sources = list({c.source for c in context_chunks})
+                return ConsultingResultModel(response_text=answer, sources=sources)
+            except Exception as fb_err:
+                logger.error("Error en fallback Gemini: %s", fb_err)
+                return ConsultingResultModel(
+                    response_text="Disculpá, tuvimos un inconveniente técnico momentáneo al consultar la información. Por favor intentá nuevamente en unos instantes o comunicate con el 0800-777-EDET (3338).",
+                    sources=[],
+                )
 
