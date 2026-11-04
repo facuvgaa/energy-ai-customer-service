@@ -1,0 +1,12 @@
+chromadb
+google-genai
+langchain-text-splitters
+pypdf
+redis
+aiokafka
+python-dotenv
+openai
+langfuse
+pytest
+pytest-asyncio
+

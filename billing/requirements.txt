@@ -1,0 +1,10 @@
+mcp
+langgraph
+redis
+aiokafka
+python-dotenv
+openai
+langfuse<3
+pytest
+pytest-asyncio
+

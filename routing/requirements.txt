@@ -1,4 +1,8 @@
-boto3
-google-genai
-openai
 aiokafka
+python-dotenv
+openai
+boto3
+botocore
+google-genai
+aws-bedrock-token-generator
+langfuse<3

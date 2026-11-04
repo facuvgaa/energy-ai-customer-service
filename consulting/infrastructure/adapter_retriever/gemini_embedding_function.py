@@ -12,7 +12,7 @@ class GeminiEmbeddingFunction(EmbeddingFunction):
             return []
 
         embeddings = []
-        # Gemini maneja batches cómodamente en bloques de 50 textos
+
         batch_size = 50
         for i in range(0, len(input), batch_size):
             batch = input[i : i + batch_size]

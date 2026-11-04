@@ -1,0 +1,123 @@
+services:
+  api-gateway:
+    image: ghcr.io/${GITHUB_REPOSITORY:-facuvega/electric-service}/api-gateway:latest
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_URL=redis://redis:6379
+      - DB_HOST=postgrest-clients
+      - DB_PORT=5432
+      - DB_NAME=clientsdb
+      - DB_USER=client_user
+      - DB_PASSWORD=client_secret
+    depends_on:
+      - kafka
+      - redis
+      - postgrest-clients
+
+  routing:
+    image: ghcr.io/${GITHUB_REPOSITORY:-facuvega/electric-service}/routing:latest
+    build:
+      context: ./routing
+      dockerfile: Dockerfile
+    container_name: routing-service
+    restart: unless-stopped
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://bedrock-mantle.us-east-2.api.aws/v1}
+      - OPENAI_MODEL=${OPENAI_MODEL:-openai.gpt-oss-120b}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AWS_BEARER_TOKEN_BEDROCK=${AWS_BEARER_TOKEN_BEDROCK}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    depends_on:
+      - kafka
+
+  vision:
+    image: ghcr.io/${GITHUB_REPOSITORY:-facuvega/electric-service}/vision:latest
+    build:
+      context: ./vision
+      dockerfile: Dockerfile
+    container_name: vision-service
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      - VISION_PORT=8001
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+      - MINIO_SECURE=false
+    depends_on:
+      - minio
+
+  billing:
+    image: ghcr.io/${GITHUB_REPOSITORY:-facuvega/electric-service}/billing:latest
+    build:
+      context: ./billing
+      dockerfile: Dockerfile
+    container_name: billing-service
+    restart: unless-stopped
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_URL=redis://redis:6379
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://bedrock-mantle.us-east-2.api.aws/v1}
+      - OPENAI_MODEL=${OPENAI_MODEL:-openai.gpt-oss-120b}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AWS_BEARER_TOKEN_BEDROCK=${AWS_BEARER_TOKEN_BEDROCK}
+      - MCP_SERVER_URL=http://host.docker.internal:8080/sse
+      - LANGFUSE_HOST=http://langfuse-server:3000
+    depends_on:
+      - kafka
+      - redis
+
+  claims:
+    image: ghcr.io/${GITHUB_REPOSITORY:-facuvega/electric-service}/claims:latest
+    build:
+      context: ./claims
+      dockerfile: Dockerfile
+    container_name: claims-service
+    restart: unless-stopped
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_URL=redis://redis:6379
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://bedrock-mantle.us-east-2.api.aws/v1}
+      - OPENAI_MODEL=${OPENAI_MODEL:-openai.gpt-oss-120b}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AWS_BEARER_TOKEN_BEDROCK=${AWS_BEARER_TOKEN_BEDROCK}
+      - MCP_SERVER_URL=http://host.docker.internal:8080/sse
+      - LANGFUSE_HOST=http://langfuse-server:3000
+    depends_on:
+      - kafka
+      - redis
+
+  consulting:
+    image: ghcr.io/${GITHUB_REPOSITORY:-facuvega/electric-service}/consulting:latest
+    build:
+      context: ./consulting
+      dockerfile: Dockerfile
+    container_name: consulting-service
+    restart: unless-stopped
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_URL=redis://redis:6379
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://bedrock-mantle.us-east-2.api.aws/v1}
+      - OPENAI_MODEL=${OPENAI_MODEL:-openai.gpt-oss-120b}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AWS_BEARER_TOKEN_BEDROCK=${AWS_BEARER_TOKEN_BEDROCK}
+      - LANGFUSE_HOST=http://langfuse-server:3000
+    depends_on:
+      - kafka
+      - redis
+      - chromadb
+
