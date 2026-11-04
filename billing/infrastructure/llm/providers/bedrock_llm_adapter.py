@@ -49,6 +49,12 @@ class BedrockLlmAdapter(LlmProviderPort):
             choice = response.choices[0]
             return choice.message.content or getattr(choice.message, "reasoning", "") or "{}"
         except Exception as e:
-            logger.error("Error generating response with Bedrock Mantle: %s", e, exc_info=True)
-            raise
+            logger.error("Error generating response with Bedrock Mantle: %s. Probando fallback con Gemini...", e)
+            try:
+                from infrastructure.llm.providers.gemini_llm_adapter import GeminiLlmAdapter
+                gemini = GeminiLlmAdapter()
+                return await gemini.generate(system_prompt, user_prompt, session_id, user_id, name)
+            except Exception as fb_err:
+                logger.error("Error en fallback Gemini para billing: %s", fb_err)
+                raise e
 

@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from typing import Optional
 import redis.asyncio as redis
 
@@ -12,10 +13,11 @@ logger = logging.getLogger(__name__)
 class RedisClaimContextRepository(ClaimContextRepositoryPort):
     def __init__(
         self,
-        redis_url: str = "redis://localhost:6379",
+        redis_url: Optional[str] = None,
         ttl_seconds: int = 3600,
     ):
-        self._client = redis.from_url(redis_url, decode_responses=True)
+        url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379")
+        self._client = redis.from_url(url, decode_responses=True)
         self._ttl = ttl_seconds
 
     async def save(self, context: ClaimContextModel) -> None:

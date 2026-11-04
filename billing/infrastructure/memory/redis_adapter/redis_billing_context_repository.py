@@ -1,4 +1,5 @@
 import json
+import os
 import redis.asyncio as redis
 from typing import Optional
 
@@ -10,8 +11,9 @@ from domain.ports.billing_context_repository_port import BillingContextRepositor
 from datetime import date
 
 class RedisBillingContextRepository(BillingContextRepositoryPort):
-    def __init__(self, redis_url: str ="redis://localhost:6379", ttl_seconds: int = 3600):
-        self._client = redis.from_url(redis_url, decode_responses=True)
+    def __init__(self, redis_url: Optional[str] = None, ttl_seconds: int = 3600):
+        url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379")
+        self._client = redis.from_url(url, decode_responses=True)
         self._ttl = ttl_seconds
 
     async def save(self, context: BillingContextModel) -> None:

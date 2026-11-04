@@ -14,12 +14,13 @@ logger = logging.getLogger(__name__)
 class McpClientAdapter(McpToolProviderPort):
     def __init__(
         self,
-        sse_url: str = os.getenv("MCP_SERVER_URL", "http://localhost:8080/sse"),
-        redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379"),
+        sse_url: Optional[str] = None,
+        redis_url: Optional[str] = None,
         cache_ttl_seconds: int = 600,
     ):
-        self._sse_url = sse_url
-        self._redis = redis.from_url(redis_url, decode_responses=True)
+        self._sse_url = sse_url or os.getenv("MCP_SERVER_URL", "http://host.docker.internal:8080/sse")
+        url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379")
+        self._redis = redis.from_url(url, decode_responses=True)
         self._cache_ttl = cache_ttl_seconds
         self._tools_cache: Optional[List[Dict[str, Any]]] = None
 
