@@ -7,11 +7,11 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from google import genai
 from google.genai import types
 
-from gemini_embeddig_function import GeminiEmbeddingFunction
+from infrastructure.adapter_retriever.gemini_embedding_function import GeminiEmbeddingFunction
 
-# Cargar variables de entorno
+
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
-from gemini_embeddig_function import GeminiEmbeddingFunction
+from infrastructure.adapter_retriever.gemini_embedding_function import GeminiEmbeddingFunction
 
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
@@ -21,7 +21,7 @@ api_key = os.getenv("GEMINI_API_KEY")
 if not api_key:
     raise ValueError("GEMINI_API_KEY no encontrada en las variables de entorno.")
 
-# Conexión con ChromaDB
+
 chroma_host = os.getenv("CHROMA_HOST", "localhost")
 chroma_port = int(os.getenv("CHROMA_PORT", 8000))
 
@@ -35,7 +35,7 @@ collection = client.get_or_create_collection(
     embedding_function=gemini_ef,
 )
 
-# Text splitter para generar fragmentos
+
 splitter = RecursiveCharacterTextSplitter(
     chunk_size=1000,
     chunk_overlap=200,
@@ -53,7 +53,7 @@ for pdf_path in sorted(pdf_dir.glob("*.pdf")):
     print(f"\n📄 Procesando: '{pdf_path.name}'...")
     reader = PdfReader(pdf_path)
 
-    # 1. Intentamos extraer texto digital directamente con pypdf
+
     pdf_text = ""
     extracted_pages = []
     for page_idx, page in enumerate(reader.pages):
@@ -62,7 +62,7 @@ for pdf_path in sorted(pdf_dir.glob("*.pdf")):
             extracted_pages.append((page_idx + 1, page_text))
             pdf_text += page_text
 
-    # 2. Si no tiene capa de texto digital (es afiche/infografía), usamos Gemini Vision
+
     if len(pdf_text.strip()) < 50:
         print("   🔍 Detectado como afiche/escaneo. Extrayendo texto completo con Gemini Vision...")
         with open(pdf_path, "rb") as f:
@@ -77,7 +77,7 @@ for pdf_path in sorted(pdf_dir.glob("*.pdf")):
         )
         extracted_pages = [(1, resp.text)]
 
-    # 3. Troceamos el texto y preparamos los metadatos
+
     pdf_chunks_count = 0
     for page_num, text_content in extracted_pages:
         chunks = splitter.split_text(text_content)
@@ -94,7 +94,7 @@ for pdf_path in sorted(pdf_dir.glob("*.pdf")):
 
     print(f"   ✅ Extraídos {pdf_chunks_count} fragmentos de '{pdf_path.name}'.")
 
-# 4. Guardamos todo en ChromaDB
+
 print(f"\n🚀 Subiendo {len(all_docs)} fragmentos a ChromaDB con embeddings de Gemini (3072 dimensiones)...")
 collection.add(
     ids=all_ids,
